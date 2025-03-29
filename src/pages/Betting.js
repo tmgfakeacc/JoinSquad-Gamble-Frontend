@@ -1,61 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { io } from 'socket.io-client';
 
-const Betting = () => {
-  const [games, setGames] = useState([]);
-  const [selectedGame, setSelectedGame] = useState(null);
-  const [betAmount, setBetAmount] = useState(0);
+function Betting() {
+  const [currentMap, setCurrentMap] = useState('');
+  const [teams, setTeams] = useState({ team1: '', team2: '' });
 
   useEffect(() => {
-    const fetchGames = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/games');
-        setGames(response.data);
-      } catch (error) {
-        console.error('Failed to fetch games', error);
+    const socket = io('http://localhost:5000');
+
+    socket.on('gameEvent', (data) => {
+      if (data.type === 'layerChange') {
+        setCurrentMap(data.data.map);
+        setTeams({ team1: data.data.team1, team2: data.data.team2 });
+        console.log('Received gameEvent:', data); // Add this line
       }
+    });
+
+    return () => {
+      socket.disconnect();
     };
-    fetchGames();
   }, []);
 
-  const handlePlaceBet = async () => {
-    try {
-      const response = await axios.post('http://localhost:5000/api/bets', {
-        userId: 1, // Replace with dynamic user ID
-        gameId: selectedGame,
-        amount: betAmount,
-      });
-      alert('Bet placed successfully!');
-    } catch (error) {
-      console.error('Failed to place bet', error);
-    }
-  };
-
   return (
-    <div>
-      <h1>Betting</h1>
-      <div>
-        <label>Select Game:</label>
-        <select onChange={(e) => setSelectedGame(e.target.value)}>
-          <option value="">Select a game</option>
-          {games.map((game) => (
-            <option key={game.id} value={game.id}>
-              {game.name}
-            </option>
-          ))}
-        </select>
+    <div style={styles.container}>
+      <h2>Betting</h2>
+      <div style={styles.teamsSection}>
+        <h3>Current Round</h3>
+        <p><strong>Map:</strong> {currentMap}</p>
+        <p><strong>Teams:</strong> {teams.team1} vs {teams.team2}</p>
       </div>
-      <div>
-        <label>Bet Amount:</label>
-        <input
-          type="number"
-          value={betAmount}
-          onChange={(e) => setBetAmount(e.target.value)}
-        />
-      </div>
-      <button onClick={handlePlaceBet}>Place Bet</button>
     </div>
   );
+}
+
+const styles = {
+  container: {
+    padding: '20px',
+  },
+  teamsSection: {
+    marginTop: '20px',
+    padding: '10px',
+    border: '1px solid #ddd',
+    borderRadius: '5px',
+    backgroundColor: '#f9f9f9',
+  },
 };
 
 export default Betting;
